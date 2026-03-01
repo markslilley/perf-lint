@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Lint
+        run: ruff check src/ tests/
+
+      - name: Tests
+        run: pytest
+
+  perf-lint-action:
+    name: perf-lint action (self-test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run perf-lint against samples (report-only)
+        id: lint
+        uses: markslilley/perf-lint-action@v1
+        with:
+          paths: samples/
+          fail_on_violations: 'false'
+
+      - name: Print outputs
+        run: |
+          echo "violations : ${{ steps.lint.outputs.violations }}"
+          echo "score      : ${{ steps.lint.outputs.score }}"
+          echo "grade      : ${{ steps.lint.outputs.grade }}"
+
+      - name: Verify violations were found
+        run: |
+          if [ "${{ steps.lint.outputs.violations }}" -eq 0 ]; then
+            echo "Expected violations from bad sample scripts but got 0"
+            exit 1
+          fi
+          echo "OK — ${{ steps.lint.outputs.violations }} violations found as expected"
