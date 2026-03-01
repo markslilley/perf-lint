@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import re
 
-from perf_lint.ir.models import Framework, Location, Severity, Violation
-from perf_lint.ir.models import ScriptIR
+from perf_lint.ir.models import Framework, Location, ScriptIR, Severity, Violation
 from perf_lint.rules.base import BaseRule, RuleRegistry
 
 

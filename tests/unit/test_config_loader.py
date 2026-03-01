@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+from pydantic import ValidationError
 
 from perf_lint.config.loader import find_config_file, load_config
 from perf_lint.config.schema import PerfLintConfig, RuleConfig
@@ -21,7 +22,7 @@ class TestPerfLintConfig:
         assert config.ignore_paths == []
 
     def test_invalid_severity_threshold(self) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             PerfLintConfig(severity_threshold="critical")
 
     def test_rule_config_default(self) -> None:
@@ -34,7 +35,7 @@ class TestPerfLintConfig:
         assert rule.severity == "error"
 
     def test_rule_config_invalid_severity(self) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             RuleConfig(severity="critical")
 
 

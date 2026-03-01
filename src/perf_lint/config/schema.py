@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -11,11 +9,11 @@ class RuleConfig(BaseModel):
     """Configuration for a single rule."""
 
     enabled: bool = True
-    severity: Optional[str] = None
+    severity: str | None = None
 
     @field_validator("severity")
     @classmethod
-    def validate_severity(cls, v: Optional[str]) -> Optional[str]:
+    def validate_severity(cls, v: str | None) -> str | None:
         if v is not None and v not in ("error", "warning", "info"):
             raise ValueError(f"severity must be 'error', 'warning', or 'info', got: {v!r}")
         return v
@@ -59,6 +57,6 @@ class PerfLintConfig(BaseModel):
         return v
 
     @classmethod
-    def default(cls) -> "PerfLintConfig":
+    def default(cls) -> PerfLintConfig:
         """Return default config with no overrides."""
         return cls()

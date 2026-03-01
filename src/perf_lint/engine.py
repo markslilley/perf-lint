@@ -8,6 +8,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import perf_lint.rules.gatling  # noqa: F401
+
+# Import rule modules to trigger registration
+import perf_lint.rules.jmeter  # noqa: F401
+import perf_lint.rules.k6  # noqa: F401
 from perf_lint.config.schema import PerfLintConfig, RuleConfig
 from perf_lint.ir.models import Framework, ScriptIR, Severity, Violation
 from perf_lint.parsers.base import BaseParser, detect_parser
@@ -15,11 +20,6 @@ from perf_lint.parsers.gatling import GatlingParser
 from perf_lint.parsers.jmeter import JMeterParser
 from perf_lint.parsers.k6 import K6Parser
 from perf_lint.rules.base import BaseRule, RuleRegistry
-
-# Import rule modules to trigger registration
-import perf_lint.rules.jmeter  # noqa: F401
-import perf_lint.rules.k6  # noqa: F401
-import perf_lint.rules.gatling  # noqa: F401
 
 
 @dataclass
@@ -296,7 +296,4 @@ class LintEngine:
         Uses Path.match() which supports the ** glob syntax documented in the
         generated config (fnmatch does not handle ** correctly).
         """
-        for pattern in self.config.ignore_paths:
-            if path.match(pattern):
-                return True
-        return False
+        return any(path.match(pattern) for pattern in self.config.ignore_paths)

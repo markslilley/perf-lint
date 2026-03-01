@@ -7,21 +7,12 @@ Validated with Pydantic v2.
 from __future__ import annotations
 
 import os
-import sys
+import tomllib
 from pathlib import Path
 
 import yaml
 
 from perf_lint.config.schema import PerfLintConfig
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:
-    try:
-        import tomllib  # type: ignore[no-redef]
-    except ImportError:
-        import tomli as tomllib  # type: ignore[no-redef]
-
 
 CONFIG_FILENAMES = (".perf-lint.yml", ".perf-lint.yaml", ".perf-lint.toml")
 

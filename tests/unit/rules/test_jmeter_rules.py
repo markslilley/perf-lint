@@ -6,9 +6,6 @@ import os
 import tempfile
 from pathlib import Path
 
-import pytest
-
-from perf_lint.engine import LintEngine
 from perf_lint.ir.models import Framework, Severity
 from perf_lint.parsers.jmeter import JMeterParser
 from perf_lint.rules.jmeter.rules import (
@@ -126,9 +123,9 @@ class TestJMX001ApplyFix:
         assert JMX001MissingCacheManager.fixable is True
 
     def test_returns_none_on_bad_xml(self) -> None:
-        import copy
-        from perf_lint.ir.models import ScriptIR, Framework
         from pathlib import Path as P
+
+        from perf_lint.ir.models import ScriptIR
         ir = ScriptIR(
             framework=Framework.JMETER,
             source_path=P("bad.jmx"),

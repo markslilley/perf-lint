@@ -7,10 +7,11 @@ import tempfile
 from pathlib import Path
 
 import pytest
+from lxml import etree
 
+from perf_lint.parsers.gatling import GatlingParser
 from perf_lint.parsers.jmeter import JMeterParser
 from perf_lint.parsers.k6 import K6Parser
-from perf_lint.parsers.gatling import GatlingParser
 
 
 def _tmp_file(content: str, suffix: str) -> Path:
@@ -78,7 +79,7 @@ class TestJMeterParserEdgeCases:
         p = _tmp_file("this is not xml", ".jmx")
         try:
             # The JMeter parser calls etree.fromstring which raises on bad XML
-            with pytest.raises(Exception):
+            with pytest.raises(etree.XMLSyntaxError):
                 JMeterParser().parse(p)
         finally:
             os.unlink(p)
@@ -87,7 +88,7 @@ class TestJMeterParserEdgeCases:
         p = _tmp_file("", ".jmx")
         try:
             # Empty file is also invalid XML, should raise
-            with pytest.raises(Exception):
+            with pytest.raises(etree.XMLSyntaxError):
                 JMeterParser().parse(p)
         finally:
             os.unlink(p)

@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from perf_lint.ir.models import Severity
 from perf_lint.parsers.gatling import GatlingParser
 from perf_lint.rules.gatling.rules import (
@@ -91,7 +89,7 @@ class TestGAT013MissingHTTP2:
 # Helper for apply_fix tests
 # ---------------------------------------------------------------------------
 
-from perf_lint.ir.models import Framework, ScriptIR
+from perf_lint.ir.models import ScriptIR  # noqa: E402
 
 
 def _make_gatling_ir(source: str, **extra_parsed_data: object) -> ScriptIR:

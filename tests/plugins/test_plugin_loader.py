@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from perf_lint.config.schema import CustomRuleConfig, PerfLintConfig
 from perf_lint.plugins.loader import load_plugins
 from perf_lint.rules.base import RuleRegistry
@@ -40,7 +38,7 @@ class PLUGIN001TestRule(BaseRule):
         )
 
         # Remove any pre-existing registration
-        registry = RuleRegistry.get_all()
+        RuleRegistry.get_all()
         loaded = load_plugins(config)
 
         assert str(plugin_file) in loaded
@@ -104,5 +102,5 @@ class GLOBRULE001(BaseRule):
         config = PerfLintConfig(
             custom_rules=[CustomRuleConfig(path=str(plugin_path))]
         )
-        loaded = load_plugins(config)
+        load_plugins(config)
         assert "CUSTOM001" in RuleRegistry.get_all()

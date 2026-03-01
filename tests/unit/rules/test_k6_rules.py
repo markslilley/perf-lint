@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from perf_lint.ir.models import Framework, ScriptIR, Severity
 from perf_lint.parsers.k6 import K6Parser
 from perf_lint.rules.k6.rules import (
@@ -19,7 +17,8 @@ from perf_lint.rules.k6.rules import (
 
 def _make_ir(source: str) -> ScriptIR:
     """Build a minimal ScriptIR from raw JS source by running the K6Parser on it."""
-    import tempfile, os
+    import os
+    import tempfile
     with tempfile.NamedTemporaryFile(suffix=".js", mode="w", delete=False, encoding="utf-8") as f:
         f.write(source)
         tmp = Path(f.name)

@@ -6,6 +6,7 @@ parser (no XXE, no network access) to handle untrusted .jmx files safely.
 
 from __future__ import annotations
 
+import contextlib
 import re
 from pathlib import Path
 
@@ -165,7 +166,6 @@ class JMeterParser(BaseParser):
         thread_group_count = 0
         has_setup_thread_group = False
         has_size_assertion = False
-        has_http_defaults = False
         http_defaults_has_args_prop = False
 
         # BeanShell
@@ -226,7 +226,6 @@ class JMeterParser(BaseParser):
             elif tag in _CONFIG_ELEMENT_TAGS:
                 config_elements.append(tag)
                 if tag == "ConfigTestElement":
-                    has_http_defaults = True
                     # Track whether the required elementProp is present.
                     # JMeter's UrlConfigGui.configure() reads HTTPsampler.Arguments
                     # unconditionally; if absent it passes null to ArgumentsPanel,
@@ -237,15 +236,11 @@ class JMeterParser(BaseParser):
                     ct_el = elem.find("./stringProp[@name='HTTPSampler.connect_timeout']")
                     rt_el = elem.find("./stringProp[@name='HTTPSampler.response_timeout']")
                     if ct_el is not None and ct_el.text and ct_el.text.strip() not in ("", "0") and "${" not in ct_el.text:
-                        try:
+                        with contextlib.suppress(ValueError):
                             connection_timeout = int(ct_el.text.strip())
-                        except ValueError:
-                            pass
                     if rt_el is not None and rt_el.text and rt_el.text.strip() not in ("", "0") and "${" not in rt_el.text:
-                        try:
+                        with contextlib.suppress(ValueError):
                             response_timeout = int(rt_el.text.strip())
-                        except ValueError:
-                            pass
                 elif tag == "HeaderManager":
                     # Check for Content-Type header
                     for entry in elem.findall(".//elementProp[@elementType='Header']"):
@@ -258,14 +253,11 @@ class JMeterParser(BaseParser):
             elif tag in _TIMER_TAGS:
                 timers.append(tag)
                 # JMX015: ConstantTimer delays
-                if tag == "ConstantTimer":
-                    if elem.get("enabled", "true").lower() != "false":
+                if tag == "ConstantTimer" and elem.get("enabled", "true").lower() != "false":
                         delay_el = elem.find("./stringProp[@name='ConstantTimer.delay']")
                         if delay_el is not None and delay_el.text and "${" not in delay_el.text:
-                            try:
+                            with contextlib.suppress(ValueError):
                                 constant_timer_delays.append(int(delay_el.text.strip()))
-                            except ValueError:
-                                pass
 
             # Assertions
             elif tag in _ASSERTION_LIST_TAGS:
@@ -307,8 +299,7 @@ class JMeterParser(BaseParser):
                 extractors_found.append(tag)
                 extractor_count += 1
                 # JMX025: Greedy regex extractors
-                if tag == "RegexExtractor":
-                    if elem.get("enabled", "true").lower() != "false":
+                if tag == "RegexExtractor" and elem.get("enabled", "true").lower() != "false":
                         regex_el = elem.find("./stringProp[@name='RegexExtractor.regex']")
                         if regex_el is not None and regex_el.text and _GREEDY_RE.search(regex_el.text):
                             greedy_regex_extractors.append(regex_el.text)

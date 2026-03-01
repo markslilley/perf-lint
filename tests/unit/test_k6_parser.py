@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from perf_lint.ir.models import Framework
 from perf_lint.parsers.k6 import K6Parser
 

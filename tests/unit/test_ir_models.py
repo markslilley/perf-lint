@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from perf_lint.ir.models import Framework, Location, Severity, ScriptIR, Violation
+from perf_lint.ir.models import Framework, Location, ScriptIR, Severity, Violation
 
 
 class TestSeverity:
@@ -51,7 +51,7 @@ class TestLocation:
 
     def test_frozen(self) -> None:
         loc = Location(line=1)
-        with pytest.raises(Exception):
+        with pytest.raises(AttributeError):
             loc.line = 2  # type: ignore
 
 
@@ -84,14 +84,13 @@ class TestViolation:
 
     def test_violation_is_frozen(self) -> None:
         """Violation is a frozen dataclass — mutations raise an error."""
-        import dataclasses
         v = Violation(
             rule_id="K6001",
             severity=Severity.WARNING,
             message="No sleep",
             location=Location(line=1),
         )
-        with pytest.raises(Exception):
+        with pytest.raises(AttributeError):
             v.rule_id = "K6002"  # type: ignore
 
     def test_dataclasses_replace_severity(self) -> None:

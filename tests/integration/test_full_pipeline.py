@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from perf_lint.config.schema import PerfLintConfig, RuleConfig
 from perf_lint.engine import LintEngine
 from perf_lint.ir.models import Severity

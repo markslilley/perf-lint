@@ -6,7 +6,6 @@ dict extracted once at parse time. Rules never re-scan raw content.
 
 from __future__ import annotations
 
-import dataclasses
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -100,17 +99,17 @@ class Severity(str, Enum):
     WARNING = "warning"
     INFO = "info"
 
-    def __lt__(self, other: "Severity") -> bool:
+    def __lt__(self, other: Severity) -> bool:
         order = {Severity.INFO: 0, Severity.WARNING: 1, Severity.ERROR: 2}
         return order[self] < order[other]
 
-    def __le__(self, other: "Severity") -> bool:
+    def __le__(self, other: Severity) -> bool:
         return self == other or self < other
 
-    def __gt__(self, other: "Severity") -> bool:
+    def __gt__(self, other: Severity) -> bool:
         return not self <= other
 
-    def __ge__(self, other: "Severity") -> bool:
+    def __ge__(self, other: Severity) -> bool:
         return not self < other
 
 

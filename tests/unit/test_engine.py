@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from perf_lint.engine import LintEngine, FileResult, LintResult
 from pathlib import Path
+
+from perf_lint.engine import FileResult, LintEngine, LintResult
 from perf_lint.ir.models import Framework, Severity
-from perf_lint.rules.base import BaseRule, RuleRegistry
+from perf_lint.rules.base import BaseRule
 
 
 class TestScoreToGrade:
@@ -164,7 +165,7 @@ class TestLintResultToDict:
 class TestInjectableRules:
     def test_engine_accepts_custom_rules(self) -> None:
         """LintEngine should use injected rules instead of global registry."""
-        from perf_lint.ir.models import Violation, Location
+        from perf_lint.ir.models import Location, Violation
 
         class AlwaysFiresRule(BaseRule):
             rule_id = "TEST001"
@@ -202,7 +203,7 @@ class TestInjectableRules:
         self, k6_fixtures_dir: Path
     ) -> None:
         """Engine with a custom rule should produce violations from that rule."""
-        from perf_lint.ir.models import Violation, Location
+        from perf_lint.ir.models import Location, Violation
 
         class AlwaysFiresRule(BaseRule):
             rule_id = "TEST002"

@@ -17,26 +17,26 @@ class RuleRegistry:
     Rules are auto-registered via @RuleRegistry.register decorator on import.
     """
 
-    _rules: ClassVar[dict[str, type["BaseRule"]]] = {}
+    _rules: ClassVar[dict[str, type[BaseRule]]] = {}
 
     @classmethod
-    def register(cls, rule_class: type["BaseRule"]) -> type["BaseRule"]:
+    def register(cls, rule_class: type[BaseRule]) -> type[BaseRule]:
         """Register a rule class. Used as a class decorator."""
         cls._rules[rule_class.rule_id] = rule_class
         return rule_class
 
     @classmethod
-    def get_all(cls) -> dict[str, type["BaseRule"]]:
+    def get_all(cls) -> dict[str, type[BaseRule]]:
         """Return all registered rules."""
         return dict(cls._rules)
 
     @classmethod
-    def get(cls, rule_id: str) -> type["BaseRule"] | None:
+    def get(cls, rule_id: str) -> type[BaseRule] | None:
         """Return a rule class by ID, or None."""
         return cls._rules.get(rule_id)
 
     @classmethod
-    def get_for_framework(cls, framework: Framework) -> list[type["BaseRule"]]:
+    def get_for_framework(cls, framework: Framework) -> list[type[BaseRule]]:
         """Return all rules applicable to a framework."""
         return [r for r in cls._rules.values() if framework in r.frameworks]
 
@@ -63,11 +63,11 @@ class BaseRule(ABC):
     tier: ClassVar[str] = "free"  # "free" | "pro" | "team"
 
     @abstractmethod
-    def check(self, ir: "ScriptIR") -> list[Violation]:
+    def check(self, ir: ScriptIR) -> list[Violation]:
         """Run this rule against an IR and return any violations found."""
         ...
 
-    def apply_fix(self, ir: "ScriptIR") -> str | None:
+    def apply_fix(self, ir: ScriptIR) -> str | None:
         """Return rewritten source with this rule's violation corrected.
 
         Return None if the fix is not safe or not implemented for this rule.

@@ -17,9 +17,11 @@ from pathlib import Path
 import click
 from rich.console import Console
 
+import perf_lint.rules.gatling  # noqa: F401
+import perf_lint.rules.jmeter  # noqa: F401
+import perf_lint.rules.k6  # noqa: F401
 from perf_lint import __version__
 from perf_lint.config.loader import load_config
-from perf_lint.config.schema import PerfLintConfig
 from perf_lint.engine import LintEngine, LintResult
 from perf_lint.fixer import apply_fixes, compute_diff, write_fixed_source
 from perf_lint.ir.models import Severity
@@ -30,12 +32,6 @@ from perf_lint.reporters.json_reporter import JsonReporter
 from perf_lint.reporters.sarif import SarifReporter
 from perf_lint.reporters.text import TextReporter
 from perf_lint.rules.base import RuleRegistry
-
-# Import rules to trigger registration (canonical location — engine.py also
-# imports these, but Python's module cache means only one import actually runs).
-import perf_lint.rules.jmeter  # noqa: F401
-import perf_lint.rules.k6  # noqa: F401
-import perf_lint.rules.gatling  # noqa: F401
 
 
 def _should_exit_nonzero(result: LintResult, threshold: str) -> bool:

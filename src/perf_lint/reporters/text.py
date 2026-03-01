@@ -117,7 +117,7 @@ class TextReporter(BaseReporter):
                 console.print(f"    [dim]Suggestion:[/] {v.suggestion}")
 
             if v.fix_example:
-                console.print(f"    [dim]Example:[/]")
+                console.print("    [dim]Example:[/]")
                 for example_line in v.fix_example.split("\n"):
                     console.print(f"      [cyan]{example_line}[/]")
 

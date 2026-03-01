@@ -8,17 +8,16 @@ from pathlib import Path
 
 import pytest
 
+from perf_lint.fixer import apply_fixes, write_fixed_source
+from perf_lint.ir.models import Framework, ScriptIR
 from perf_lint.parsers.jmeter import JMeterParser
 from perf_lint.parsers.k6 import K6Parser
-from perf_lint.fixer import apply_fixes, write_fixed_source
+from perf_lint.rules.base import RuleRegistry
 from perf_lint.rules.jmeter.rules import (
     JMX001MissingCacheManager,
     JMX002MissingCookieManager,
 )
-from perf_lint.rules.k6.rules import K6001MissingThinkTime, K6004MissingThresholds
-from perf_lint.rules.base import RuleRegistry
-from perf_lint.ir.models import Framework, ScriptIR
-
+from perf_lint.rules.k6.rules import K6001MissingThinkTime
 
 _MINIMAL_JMX = """\
 <?xml version="1.0" encoding="UTF-8"?>
@@ -354,7 +353,7 @@ class TestEdgeCases:
             parsed_data={},
         )
         # Create violations manually for JMX001 (which would try to parse XML)
-        from perf_lint.ir.models import Severity, Violation, Location
+        from perf_lint.ir.models import Location, Severity, Violation
         violations = [
             Violation(
                 rule_id="JMX001",

@@ -11,7 +11,7 @@ import re
 from pathlib import Path
 
 from perf_lint.ir.models import ScriptIR, Violation
-from perf_lint.rules.base import BaseRule, RuleRegistry
+from perf_lint.rules.base import BaseRule
 
 # Matches the XML encoding declaration, e.g. <?xml version="1.0" encoding="ISO-8859-1"?>
 _XML_ENCODING_RE = re.compile(r'encoding=["\']([^"\']+)["\']', re.IGNORECASE)

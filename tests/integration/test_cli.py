@@ -91,7 +91,7 @@ class TestCheckCommand:
         self, runner: CliRunner, k6_fixtures_dir: Path, tmp_path: Path
     ) -> None:
         output_file = tmp_path / "results.json"
-        result = runner.invoke(
+        runner.invoke(
             cli,
             [
                 "check",
@@ -173,10 +173,10 @@ class TestInitCommand:
     ) -> None:
         config_file = tmp_path / ".perf-lint.yml"
         config_file.write_text("existing content")
-        result = runner.invoke(
+        runner.invoke(
             cli, ["init", "--output", str(config_file)], input="n\n"
         )
-        assert "existing content" == config_file.read_text()
+        assert config_file.read_text() == "existing content"
 
 
 class TestQualityScore:

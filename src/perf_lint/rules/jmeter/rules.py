@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import copy
-import re
 
 from lxml import etree
 
-from perf_lint.ir.models import Framework, Location, Severity, Violation
-from perf_lint.ir.models import ScriptIR
+from perf_lint.ir.models import Framework, Location, ScriptIR, Severity, Violation
 from perf_lint.rules.base import BaseRule, RuleRegistry
 from perf_lint.xml_utils import _SECURE_PARSER
 
