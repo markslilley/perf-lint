@@ -7,7 +7,7 @@ dict extracted once at parse time. Rules never re-scan raw content.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Any, TypedDict
 
@@ -92,7 +92,7 @@ class GatlingParsedData(TypedDict, total=False):
     injections: list[dict]
 
 
-class Severity(str, Enum):
+class Severity(StrEnum):
     """Violation severity levels."""
 
     ERROR = "error"
@@ -113,7 +113,7 @@ class Severity(str, Enum):
         return not self < other
 
 
-class Framework(str, Enum):
+class Framework(StrEnum):
     """Supported performance testing frameworks."""
 
     JMETER = "jmeter"
