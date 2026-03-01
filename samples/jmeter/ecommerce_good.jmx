@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  JMeter Test Plan — E-commerce checkout flow (GOOD example)
+
+  Demonstrates best practices:
+    - HTTP Cache Manager (simulates browser caching)
+    - HTTP Cookie Manager (maintains sessions)
+    - CSV Data Set (parameterised users and products)
+    - GaussianRandomTimer (realistic think time variation)
+    - JMeter variables throughout (${HOST}, ${USER_EMAIL}, etc.)
+    - Response Assertions on every sampler
+    - Sensible ramp-up (30 seconds per 10 threads = 3s/thread)
+
+  Run:
+    jmeter -n -t ecommerce_good.jmx \
+           -JHOST=staging.example.com \
+           -JNUM_THREADS=50 \
+           -JRAMP_TIME=150 \
+           -JDURATION=600
+-->
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.5">
+  <hashTree>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="E-commerce Checkout (Good)" enabled="true">
+      <stringProp name="TestPlan.comments">Parameterised checkout flow with proper think times and assertions</stringProp>
+      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments">
+        <collectionProp name="Arguments.arguments">
+          <elementProp name="HOST" elementType="Argument">
+            <stringProp name="Argument.name">HOST</stringProp>
+            <stringProp name="Argument.value">${__P(HOST,staging.example.com)}</stringProp>
+          </elementProp>
+          <elementProp name="PORT" elementType="Argument">
+            <stringProp name="Argument.name">PORT</stringProp>
+            <stringProp name="Argument.value">${__P(PORT,443)}</stringProp>
+          </elementProp>
+          <elementProp name="PROTOCOL" elementType="Argument">
+            <stringProp name="Argument.name">PROTOCOL</stringProp>
+            <stringProp name="Argument.value">${__P(PROTOCOL,https)}</stringProp>
+          </elementProp>
+        </collectionProp>
+      </elementProp>
+      <boolProp name="TestPlan.functional_mode">false</boolProp>
+    </TestPlan>
+    <hashTree>
+
+      <!-- ── Thread Group ─────────────────────────────────────────────────── -->
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Checkout Users" enabled="true">
+        <stringProp name="ThreadGroup.num_threads">${__P(NUM_THREADS,20)}</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">${__P(RAMP_TIME,60)}</stringProp>
+        <stringProp name="ThreadGroup.duration">${__P(DURATION,300)}</stringProp>
+        <boolProp name="ThreadGroup.scheduler">true</boolProp>
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+      </ThreadGroup>
+      <hashTree>
+
+        <!-- ── Config: CSV Data Set ──────────────────────────────────────── -->
+        <CSVDataSet guiclass="TestBeanGUI" testname="User Accounts" enabled="true">
+          <stringProp name="filename">users.csv</stringProp>
+          <stringProp name="variableNames">USER_EMAIL,USER_PASSWORD</stringProp>
+          <stringProp name="delimiter">,</stringProp>
+          <boolProp name="recycle">true</boolProp>
+          <boolProp name="stopThread">false</boolProp>
+          <stringProp name="shareMode">shareMode.all</stringProp>
+        </CSVDataSet>
+
+        <CSVDataSet guiclass="TestBeanGUI" testname="Product Catalogue" enabled="true">
+          <stringProp name="filename">products.csv</stringProp>
+          <stringProp name="variableNames">PRODUCT_ID,PRODUCT_NAME</stringProp>
+          <stringProp name="delimiter">,</stringProp>
+          <boolProp name="recycle">true</boolProp>
+          <boolProp name="stopThread">false</boolProp>
+          <stringProp name="shareMode">shareMode.all</stringProp>
+        </CSVDataSet>
+
+        <!-- ── Config: HTTP Defaults ─────────────────────────────────────── -->
+        <ConfigTestElement guiclass="HttpDefaultsGui" testclass="ConfigTestElement" testname="HTTP Request Defaults" enabled="true">
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments"/>
+          </elementProp>
+          <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+          <stringProp name="HTTPSampler.port">${PORT}</stringProp>
+          <stringProp name="HTTPSampler.protocol">${PROTOCOL}</stringProp>
+          <stringProp name="HTTPSampler.connect_timeout">5000</stringProp>
+          <stringProp name="HTTPSampler.response_timeout">10000</stringProp>
+        </ConfigTestElement>
+
+        <!-- ── Config: Cookie Manager ────────────────────────────────────── -->
+        <CookieManager guiclass="CookiePanel" testclass="CookieManager" testname="HTTP Cookie Manager" enabled="true">
+          <boolProp name="CookieManager.clearEachIteration">true</boolProp>
+        </CookieManager>
+
+        <!-- ── Config: Cache Manager ─────────────────────────────────────── -->
+        <CacheManager guiclass="CacheManagerGui" testclass="CacheManager" testname="HTTP Cache Manager" enabled="true">
+          <boolProp name="clearEachIteration">true</boolProp>
+        </CacheManager>
+
+        <!-- ── Config: Header Manager ────────────────────────────────────── -->
+        <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Headers" enabled="true">
+          <collectionProp name="HeaderManager.headers">
+            <elementProp name="" elementType="Header">
+              <stringProp name="Header.name">Accept</stringProp>
+              <stringProp name="Header.value">application/json</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="Header">
+              <stringProp name="Header.name">Content-Type</stringProp>
+              <stringProp name="Header.value">application/json</stringProp>
+            </elementProp>
+          </collectionProp>
+        </HeaderManager>
+
+        <!-- ── Think Time ─────────────────────────────────────────────────── -->
+        <GaussianRandomTimer guiclass="GaussianRandomTimerGui" testclass="GaussianRandomTimer" testname="User Think Time" enabled="true">
+          <stringProp name="ConstantTimer.delay">2000</stringProp>
+          <stringProp name="RandomTimer.range">1000</stringProp>
+        </GaussianRandomTimer>
+
+        <!-- ── Transaction 1: Homepage ───────────────────────────────────── -->
+        <TransactionController guiclass="TransactionControllerGui" testclass="TransactionController" testname="01 Homepage" enabled="true"/>
+        <hashTree>
+          <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /" enabled="true">
+            <stringProp name="HTTPSampler.path">/</stringProp>
+            <stringProp name="HTTPSampler.method">GET</stringProp>
+          </HTTPSamplerProxy>
+          <hashTree>
+            <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Status 200" enabled="true">
+              <collectionProp name="Asserion.test_strings">
+                <stringProp name="49586">200</stringProp>
+              </collectionProp>
+              <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+              <intProp name="Assertion.test_type">8</intProp>
+            </ResponseAssertion>
+            <DurationAssertion guiclass="DurationAssertionGui" testclass="DurationAssertion" testname="Response time under 1000ms" enabled="true">
+              <stringProp name="DurationAssertion.duration">1000</stringProp>
+            </DurationAssertion>
+          </hashTree>
+        </hashTree>
+
+        <!-- ── Transaction 2: Browse Products ───────────────────────────── -->
+        <TransactionController guiclass="TransactionControllerGui" testclass="TransactionController" testname="02 Browse Products" enabled="true"/>
+        <hashTree>
+          <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /api/products" enabled="true">
+            <stringProp name="HTTPSampler.path">/api/products?page=1&amp;limit=20</stringProp>
+            <stringProp name="HTTPSampler.method">GET</stringProp>
+          </HTTPSamplerProxy>
+          <hashTree>
+            <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Status 200" enabled="true">
+              <collectionProp name="Asserion.test_strings">
+                <stringProp name="49586">200</stringProp>
+              </collectionProp>
+              <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+              <intProp name="Assertion.test_type">8</intProp>
+            </ResponseAssertion>
+            <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="Response has items" enabled="true">
+              <stringProp name="JSON_PATH">$.items</stringProp>
+              <boolProp name="JSONVALIDATION">false</boolProp>
+              <boolProp name="EXPECT_NULL">false</boolProp>
+              <boolProp name="INVERT">false</boolProp>
+            </JSONPathAssertion>
+            <!-- Extract a product ID from the response for the next request -->
+            <JSONPathExtractor guiclass="JSONPathExtractorGui" testclass="JSONPathExtractor" testname="Extract Product ID" enabled="true">
+              <stringProp name="VAR">PRODUCT_ID</stringProp>
+              <stringProp name="JSONPATH">$.items[0].id</stringProp>
+              <stringProp name="DEFAULT">PRD-001</stringProp>
+            </JSONPathExtractor>
+          </hashTree>
+        </hashTree>
+
+        <!-- ── Transaction 3: Login ──────────────────────────────────────── -->
+        <TransactionController guiclass="TransactionControllerGui" testclass="TransactionController" testname="03 Login" enabled="true"/>
+        <hashTree>
+          <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="POST /api/auth/login" enabled="true">
+            <stringProp name="HTTPSampler.path">/api/auth/login</stringProp>
+            <stringProp name="HTTPSampler.method">POST</stringProp>
+            <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+              <collectionProp name="Arguments.arguments">
+                <elementProp name="" elementType="HTTPArgument">
+                  <stringProp name="Argument.value">{"email":"${USER_EMAIL}","password":"${USER_PASSWORD}"}</stringProp>
+                </elementProp>
+              </collectionProp>
+            </elementProp>
+          </HTTPSamplerProxy>
+          <hashTree>
+            <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Status 200" enabled="true">
+              <collectionProp name="Asserion.test_strings">
+                <stringProp name="49586">200</stringProp>
+              </collectionProp>
+              <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+              <intProp name="Assertion.test_type">8</intProp>
+            </ResponseAssertion>
+            <JSONPathExtractor guiclass="JSONPathExtractorGui" testclass="JSONPathExtractor" testname="Extract Token" enabled="true">
+              <stringProp name="VAR">AUTH_TOKEN</stringProp>
+              <stringProp name="JSONPATH">$.token</stringProp>
+              <stringProp name="DEFAULT">INVALID_TOKEN</stringProp>
+            </JSONPathExtractor>
+          </hashTree>
+        </hashTree>
+
+        <!-- ── Transaction 4: Add to Cart ───────────────────────────────── -->
+        <TransactionController guiclass="TransactionControllerGui" testclass="TransactionController" testname="04 Add to Cart" enabled="true"/>
+        <hashTree>
+          <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="POST /api/cart/items" enabled="true">
+            <stringProp name="HTTPSampler.path">/api/cart/items</stringProp>
+            <stringProp name="HTTPSampler.method">POST</stringProp>
+            <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+              <collectionProp name="Arguments.arguments">
+                <elementProp name="" elementType="HTTPArgument">
+                  <stringProp name="Argument.value">{"product_id":"${PRODUCT_ID}","quantity":1}</stringProp>
+                </elementProp>
+              </collectionProp>
+            </elementProp>
+            <elementProp name="HTTPSampler.Arguments" elementType="Arguments">
+              <collectionProp name="Arguments.arguments">
+                <elementProp name="Authorization" elementType="Header">
+                  <stringProp name="Header.name">Authorization</stringProp>
+                  <stringProp name="Header.value">Bearer ${AUTH_TOKEN}</stringProp>
+                </elementProp>
+              </collectionProp>
+            </elementProp>
+          </HTTPSamplerProxy>
+          <hashTree>
+            <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Status 201" enabled="true">
+              <collectionProp name="Asserion.test_strings">
+                <stringProp name="49586">201</stringProp>
+              </collectionProp>
+              <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+              <intProp name="Assertion.test_type">8</intProp>
+            </ResponseAssertion>
+          </hashTree>
+        </hashTree>
+
+      </hashTree>
+    </hashTree>
+  </hashTree>
+</jmeterTestPlan>

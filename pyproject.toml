@@ -1,0 +1,71 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "perf-lint-tool"
+version = "1.0.0"
+description = "Static analyser for performance test scripts (JMeter, k6, Gatling)"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [{ name = "Mark Lilley", email = "mark@martkos-it.co.uk" }]
+keywords = ["performance", "testing", "linter", "jmeter", "k6", "gatling", "load-testing", "static-analysis"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = [
+    "click>=8.0",
+    "rich>=13.0",
+    "pyyaml>=6.0",
+    "pydantic>=2.0",
+    "lxml>=6.0",
+]
+
+[project.urls]
+Homepage = "https://perflint.martkos-it.co.uk"
+Repository = "https://github.com/markslilley/perf-lint"
+"Bug Tracker" = "https://github.com/markslilley/perf-lint/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.4",
+    "mypy>=1.0",
+    "types-PyYAML",
+]
+
+[project.scripts]
+perf-lint = "perf_lint.cli:cli"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "PIE", "SIM"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=perf_lint --cov-report=term-missing -q"
+
+[tool.coverage.run]
+source = ["src/perf_lint"]
+omit = ["tests/*"]

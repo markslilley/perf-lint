@@ -1,0 +1,4 @@
+version: 1
+severity_threshold: info
+custom_rules:
+  - path: tests/plugins/sample_plugin/custom_rule.py

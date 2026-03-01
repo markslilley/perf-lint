@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  JMeter Test Plan — E-commerce checkout flow (BAD example)
+
+  This plan has several common quality problems that perf-lint will catch:
+
+    JMX001 — No HTTP Cache Manager (browser caching not simulated)
+    JMX002 — No HTTP Cookie Manager (sessions won't be maintained)
+    JMX003 — Only ConstantTimer used (robotic, perfectly-timed think time)
+    JMX004 — Ramp-up too short (500 threads in 10 seconds = 0.02s/thread!)
+    JMX005 — No assertions (test can't detect failures)
+    JMX006 — Hardcoded IP address in samplers
+    JMX007 — No CSV data set (all 500 users send identical requests)
+    JMX008 — No JMeter variables used anywhere
+
+  Run:
+    jmeter -n -t ecommerce_bad.jmx
+
+  Then compare with ecommerce_good.jmx to see how to fix each issue.
+-->
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.5">
+  <hashTree>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="E-commerce Checkout (Bad)" enabled="true">
+      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments"/>
+    </TestPlan>
+    <hashTree>
+
+      <!-- JMX004: 500 threads with only 10 seconds ramp-up = 0.02s per thread.
+           This creates a massive spike, not a realistic load ramp. -->
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Thread Group" enabled="true">
+        <stringProp name="ThreadGroup.num_threads">500</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">10</stringProp>
+        <stringProp name="ThreadGroup.duration">300</stringProp>
+        <boolProp name="ThreadGroup.scheduler">true</boolProp>
+      </ThreadGroup>
+      <hashTree>
+
+        <!-- JMX001: No HTTP Cache Manager — all resources fetched fresh every time.
+             Real browsers cache JS, CSS, and images. This inflates server load by 3-5x. -->
+
+        <!-- JMX002: No HTTP Cookie Manager — each request is stateless.
+             Login sessions won't persist, so the app will reject authenticated requests. -->
+
+        <!-- JMX007: No CSV Data Set — all 500 virtual users will send requests
+             for the same product, with the same credentials. This creates artificial
+             hotspots and doesn't reflect real user behaviour. -->
+
+        <!-- JMX003: ConstantTimer with a fixed 1000ms delay — all users think for
+             exactly 1 second, in lockstep. Real users have variable think times. -->
+        <ConstantTimer guiclass="ConstantTimerGui" testclass="ConstantTimer" testname="Think Time" enabled="true">
+          <stringProp name="ConstantTimer.delay">1000</stringProp>
+        </ConstantTimer>
+
+        <!-- JMX006, JMX008: Hardcoded IP address and no variables used.
+             This test only works against one specific server and can't be reused. -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Homepage" enabled="true">
+          <stringProp name="HTTPSampler.domain">10.0.1.42</stringProp>
+          <stringProp name="HTTPSampler.port">8080</stringProp>
+          <stringProp name="HTTPSampler.protocol">http</stringProp>
+          <stringProp name="HTTPSampler.path">/</stringProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <!-- JMX005: No assertions here — a 500 error looks the same as a 200 to JMeter -->
+        </hashTree>
+
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Login" enabled="true">
+          <stringProp name="HTTPSampler.domain">10.0.1.42</stringProp>
+          <stringProp name="HTTPSampler.port">8080</stringProp>
+          <stringProp name="HTTPSampler.protocol">http</stringProp>
+          <stringProp name="HTTPSampler.path">/api/auth/login</stringProp>
+          <stringProp name="HTTPSampler.method">POST</stringProp>
+          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments">
+              <elementProp name="" elementType="HTTPArgument">
+                <!-- JMX007, JMX008: Hardcoded credentials — every virtual user is "testuser" -->
+                <stringProp name="Argument.value">{"email":"testuser@example.com","password":"password123"}</stringProp>
+              </elementProp>
+            </collectionProp>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <!-- JMX005: No assertion — if auth returns 401, the test merrily continues -->
+        </hashTree>
+
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Add to Cart" enabled="true">
+          <stringProp name="HTTPSampler.domain">10.0.1.42</stringProp>
+          <stringProp name="HTTPSampler.port">8080</stringProp>
+          <stringProp name="HTTPSampler.protocol">http</stringProp>
+          <stringProp name="HTTPSampler.path">/api/cart/items</stringProp>
+          <stringProp name="HTTPSampler.method">POST</stringProp>
+          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments">
+              <elementProp name="" elementType="HTTPArgument">
+                <!-- JMX007: All 500 VUs add the exact same product to cart -->
+                <stringProp name="Argument.value">{"product_id":"PRD-001","quantity":1}</stringProp>
+              </elementProp>
+            </collectionProp>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree/>
+
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Checkout" enabled="true">
+          <stringProp name="HTTPSampler.domain">10.0.1.42</stringProp>
+          <stringProp name="HTTPSampler.port">8080</stringProp>
+          <stringProp name="HTTPSampler.protocol">http</stringProp>
+          <stringProp name="HTTPSampler.path">/api/orders</stringProp>
+          <stringProp name="HTTPSampler.method">POST</stringProp>
+          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments">
+              <elementProp name="" elementType="HTTPArgument">
+                <stringProp name="Argument.value">{"payment_method":"card_test"}</stringProp>
+              </elementProp>
+            </collectionProp>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <!-- JMX005: No assertion on the most critical step in the journey -->
+        </hashTree>
+
+      </hashTree>
+    </hashTree>
+  </hashTree>
+</jmeterTestPlan>
