@@ -34,6 +34,22 @@ perf-lint statically analyses performance test scripts (JMeter `.jmx`, k6 `.js`/
 
 ---
 
+## Open core model
+
+perf-lint is open core. The public repo ships only free-tier rules. Pro and Team rules live in the private `perf-lint-pro` package.
+
+| Tier | Rules | Repo |
+|------|-------|------|
+| Free | 18 | `markslilley/perf-lint` (this repo, MIT) |
+| Pro | 22 | `markslilley/perf-lint-pro` (private) |
+| Team | 13 | `markslilley/perf-lint-pro` (private) |
+
+Pro/Team rules are loaded at runtime via Python entry_points (`perf_lint.rules` group). The plugin loader in `src/perf_lint/plugins/loader.py` discovers and calls `load()` from any installed package that registers under that group.
+
+The API container installs both `vendor/perf-lint` (18 rules) and `vendor/perf-lint-pro` (35 rules) — giving it all 53 rules for server-side use.
+
+---
+
 ## Repository layout
 
 ```
@@ -64,9 +80,9 @@ perf-lint/
 │   │   └── sarif.py           # SARIF 2.1.0 output
 │   └── rules/
 │       ├── base.py            # BaseRule + RuleRegistry
-│       ├── jmeter/rules.py    # JMX001–JMX025
-│       ├── k6/rules.py        # K6001–K6015
-│       └── gatling/rules.py   # GAT001–GAT013
+│       ├── jmeter/rules.py    # Free tier: JMX001–003, 009–010, 012–014, 023 (9 rules)
+│       ├── k6/rules.py        # Free tier: K6001, K6004, K6007, K6012–013 (5 rules)
+│       └── gatling/rules.py   # Free tier: GAT001, GAT005, GAT011, GAT013 (4 rules)
 ├── tests/
 │   ├── conftest.py            # Shared fixtures (fixture dir paths)
 │   ├── fixtures/              # Minimal test scripts per framework
@@ -530,4 +546,34 @@ perf-lint rules --framework jmeter --json | python3 -m json.tool
 
 # Regenerate starter config
 perf-lint init --output /tmp/test.perf-lint.yml
+
+# Deploy to VPS (ALWAYS exclude data/ to protect the database)
+rsync -az --delete \
+  --exclude='.git' --exclude='__pycache__' --exclude='*.egg-info' --exclude='data/' \
+  /home/mslilley/Development/Code/perf-lint-api/ vps:/var/www/perf-lint-api/
+ssh vps "cd /var/www/perf-lint-api && docker compose build --no-cache api && docker compose up -d --force-recreate api"
 ```
+
+---
+
+## Distribution
+
+| Channel | Package | Version |
+|---------|---------|---------|
+| PyPI | `perf-lint-tool` | 1.0.1 (1.0.0 yanked — had all 53 rules) |
+| GitHub Action | `markslilley/perf-lint-action` | v1 (Marketplace) |
+| API service | `perflint.martkos-it.co.uk` | Docker, VPS |
+
+**PyPI note:** The package name is `perf-lint-tool` (not `perf-lint`). Install with `pip install perf-lint-tool`. The CLI command is still `perf-lint`.
+
+**GitHub Action:** The `v1` floating tag always points to the latest 1.x release. After pushing fixes to `perf-lint-action`, move the floating tag:
+```bash
+gh api --method PATCH /repos/markslilley/perf-lint-action/git/refs/tags/v1 \
+  -f sha="$(git -C /path/to/perf-lint-action rev-parse HEAD)" -F force=true
+```
+
+## CI
+
+`.github/workflows/ci.yml` runs on push/PR/workflow_dispatch:
+- **Tests job**: ruff check + pytest (265 tests)
+- **perf-lint-action self-test job**: runs `markslilley/perf-lint-action@v1` against `samples/`, asserts violations > 0 and checks outputs (violations, score, grade)
