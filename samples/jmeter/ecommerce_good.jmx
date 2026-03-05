@@ -44,6 +44,10 @@
 
       <!-- ── Thread Group ─────────────────────────────────────────────────── -->
       <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Checkout Users" enabled="true">
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+          <intProp name="LoopController.loops">-1</intProp>
+        </elementProp>
         <stringProp name="ThreadGroup.num_threads">${__P(NUM_THREADS,20)}</stringProp>
         <stringProp name="ThreadGroup.ramp_time">${__P(RAMP_TIME,60)}</stringProp>
         <stringProp name="ThreadGroup.duration">${__P(DURATION,300)}</stringProp>
@@ -61,6 +65,7 @@
           <boolProp name="stopThread">false</boolProp>
           <stringProp name="shareMode">shareMode.all</stringProp>
         </CSVDataSet>
+        <hashTree/>
 
         <CSVDataSet guiclass="TestBeanGUI" testname="Product Catalogue" enabled="true">
           <stringProp name="filename">products.csv</stringProp>
@@ -70,6 +75,7 @@
           <boolProp name="stopThread">false</boolProp>
           <stringProp name="shareMode">shareMode.all</stringProp>
         </CSVDataSet>
+        <hashTree/>
 
         <!-- ── Config: HTTP Defaults ─────────────────────────────────────── -->
         <ConfigTestElement guiclass="HttpDefaultsGui" testclass="ConfigTestElement" testname="HTTP Request Defaults" enabled="true">
@@ -82,16 +88,19 @@
           <stringProp name="HTTPSampler.connect_timeout">5000</stringProp>
           <stringProp name="HTTPSampler.response_timeout">10000</stringProp>
         </ConfigTestElement>
+        <hashTree/>
 
         <!-- ── Config: Cookie Manager ────────────────────────────────────── -->
         <CookieManager guiclass="CookiePanel" testclass="CookieManager" testname="HTTP Cookie Manager" enabled="true">
           <boolProp name="CookieManager.clearEachIteration">true</boolProp>
         </CookieManager>
+        <hashTree/>
 
         <!-- ── Config: Cache Manager ─────────────────────────────────────── -->
         <CacheManager guiclass="CacheManagerGui" testclass="CacheManager" testname="HTTP Cache Manager" enabled="true">
           <boolProp name="clearEachIteration">true</boolProp>
         </CacheManager>
+        <hashTree/>
 
         <!-- ── Config: Header Manager ────────────────────────────────────── -->
         <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Headers" enabled="true">
@@ -106,12 +115,14 @@
             </elementProp>
           </collectionProp>
         </HeaderManager>
+        <hashTree/>
 
         <!-- ── Think Time ─────────────────────────────────────────────────── -->
         <GaussianRandomTimer guiclass="GaussianRandomTimerGui" testclass="GaussianRandomTimer" testname="User Think Time" enabled="true">
           <stringProp name="ConstantTimer.delay">2000</stringProp>
           <stringProp name="RandomTimer.range">1000</stringProp>
         </GaussianRandomTimer>
+        <hashTree/>
 
         <!-- ── Transaction 1: Homepage ───────────────────────────────────── -->
         <TransactionController guiclass="TransactionControllerGui" testclass="TransactionController" testname="01 Homepage" enabled="true"/>

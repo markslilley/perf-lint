@@ -127,7 +127,7 @@ Run `perf-lint rules` to list all rules with their current configuration, or `pe
 
 ## Pro and Team rules
 
-The 18 rules above are free and open source (MIT). A further 35 rules are available to Pro and Team subscribers via [perflint.io](https://perflint.io).
+The 18 rules above are free and open source (MIT). A further 35 rules are available to Pro and Team subscribers via [perflint.martkos-it.co.uk](https://perflint.martkos-it.co.uk).
 
 **Pro rules** catch the problems that slip past the basics:
 

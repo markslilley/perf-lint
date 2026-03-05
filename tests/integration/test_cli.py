@@ -268,6 +268,20 @@ class TestFixDryRun:
         runner.invoke(cli, ["check", str(tmp_file), "--fix-dry-run"])
         assert tmp_file.read_text() == original
 
+    def test_fix_dry_run_shows_projected_score(
+        self, runner: CliRunner, k6_fixtures_dir: Path
+    ) -> None:
+        result = runner.invoke(
+            cli,
+            [
+                "check",
+                str(k6_fixtures_dir / "missing_sleep.js"),
+                "--fix-dry-run",
+                "--no-color",
+            ],
+        )
+        assert "Score after fixes" in result.output
+
     def test_fix_and_fix_dry_run_cannot_combine(
         self, runner: CliRunner, k6_fixtures_dir: Path
     ) -> None:

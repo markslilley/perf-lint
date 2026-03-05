@@ -60,6 +60,7 @@ class TextReporter(BaseReporter):
         output_path: Path | None = None,
         fixed_by_file: dict[str, list[str]] | None = None,
         dry_run_diffs: dict[str, str] | None = None,
+        projected_result: LintResult | None = None,
         **kwargs: object,
     ) -> str:
         buf = StringIO()
@@ -74,7 +75,7 @@ class TextReporter(BaseReporter):
         if dry_run_diffs:
             self._render_dry_run_diffs(console, dry_run_diffs)
 
-        self._render_summary(console, result)
+        self._render_summary(console, result, projected_result)
 
         output = buf.getvalue()
         self._write_output(output, output_path)
@@ -148,7 +149,12 @@ class TextReporter(BaseReporter):
                 else:
                     console.print(diff_line)
 
-    def _render_summary(self, console: Console, result: LintResult) -> None:
+    def _render_summary(
+        self,
+        console: Console,
+        result: LintResult,
+        projected_result: LintResult | None = None,
+    ) -> None:
         console.print()
 
         if result.total_violations == 0:
@@ -178,5 +184,12 @@ class TextReporter(BaseReporter):
             "Quality score",
             f"[{grade_style}]{result.overall_grade} {result.overall_score}/100[/{grade_style}]",
         )
+
+        if projected_result is not None:
+            proj_style = _GRADE_STYLE.get(projected_result.overall_grade, "bold")
+            table.add_row(
+                "[dim]Score after fixes[/]",
+                f"[{proj_style}]{projected_result.overall_grade} {projected_result.overall_score}/100[/{proj_style}]",
+            )
 
         console.print(table)

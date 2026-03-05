@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import sys
+import tempfile
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -22,7 +23,7 @@ import perf_lint.rules.jmeter  # noqa: F401
 import perf_lint.rules.k6  # noqa: F401
 from perf_lint import __version__
 from perf_lint.config.loader import load_config
-from perf_lint.engine import LintEngine, LintResult
+from perf_lint.engine import FileResult, LintEngine, LintResult
 from perf_lint.fixer import apply_fixes, compute_diff, write_fixed_source
 from perf_lint.ir.models import Severity
 from perf_lint.parsers.base import detect_parser
@@ -126,14 +127,25 @@ def _hidden_tiers(result: LintResult, free_rule_ids: set[str]) -> str:
     return " · ".join(parts) if parts else "Pro"
 
 
-def _print_hint(hidden_count: int, tiers: str, api_key: str | None) -> None:
+def _print_hint(
+    hidden_count: int,
+    tiers: str,
+    api_key: str | None,
+    projected_result: LintResult | None = None,
+) -> None:
     """Print the hidden-violations hint block to stderr."""
     noun = "violation" if hidden_count == 1 else "violations"
+    proj_suffix = ""
+    if projected_result is not None:
+        proj_suffix = (
+            f" · full score {projected_result.overall_grade} {projected_result.overall_score}/100"
+            " after fixes"
+        )
     if api_key:
-        msg = f"{hidden_count} {noun} hidden ({tiers}) — view in your dashboard"
+        msg = f"{hidden_count} {noun} hidden ({tiers}){proj_suffix} — view in your dashboard"
     else:
         msg = (
-            f"{hidden_count} {noun} hidden ({tiers})\n"
+            f"{hidden_count} {noun} hidden ({tiers}){proj_suffix}\n"
             "Sign up free at https://perflint.martkos-it.co.uk\n"
             "Set PERF_LINT_API_KEY to send full results to your dashboard."
         )
@@ -164,32 +176,64 @@ def _post_results_async(api_key: str, api_url: str, result: LintResult) -> None:
         pass  # Silent — never block the CLI exit
 
 
+def _lint_source(engine: LintEngine, source: str, original_path: Path) -> FileResult | None:
+    """Re-lint an in-memory source string by writing to a temp file.
+
+    Used by --fix-dry-run to compute the projected score after fixes would
+    be applied, without modifying the original file.
+    """
+    tmp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            suffix=original_path.suffix, mode="w", encoding="utf-8", delete=False
+        ) as f:
+            f.write(source)
+            tmp_path = Path(f.name)
+        fr = engine.lint_file(tmp_path)
+        if fr is not None:
+            fr.path = original_path
+        return fr
+    except Exception:
+        return None
+    finally:
+        if tmp_path is not None:
+            tmp_path.unlink(missing_ok=True)
+
+
 def _run_fix_pass(
     result: LintResult,
     engine: LintEngine,
     all_rules: dict,
     do_fix: bool,
     fix_dry_run: bool,
-) -> tuple[dict[str, list[str]], dict[str, str]]:
+) -> tuple[dict[str, list[str]], dict[str, str], LintResult | None]:
     """Apply auto-fixes to all files in result.
 
     Returns:
         fixed_by_file: {file_path: [rule_ids_applied]}
         dry_run_diffs: {file_path: unified_diff_str}  (only when fix_dry_run)
+        projected_result: re-linted LintResult after fixes (only when fix_dry_run)
     """
     fixed_by_file: dict[str, list[str]] = {}
     dry_run_diffs: dict[str, str] = {}
+    projected_file_results: list[FileResult] = []
 
     for file_result in result.file_results:
         if file_result.parse_error or not file_result.violations:
+            if fix_dry_run:
+                projected_file_results.append(file_result)
             continue
 
         parser = detect_parser(file_result.path, engine._parsers)
         if parser is None:
+            if fix_dry_run:
+                projected_file_results.append(file_result)
             continue
         try:
             ir = parser.parse(file_result.path)
         except Exception:
+            if fix_dry_run:
+                projected_file_results.append(file_result)
             continue
 
         original_source = ir.raw_content
@@ -201,11 +245,22 @@ def _run_fix_pass(
                 diff = compute_diff(original_source, fixed_source, file_key)
                 if diff:
                     dry_run_diffs[file_key] = diff
+                projected_fr = _lint_source(engine, fixed_source, file_result.path)
+                projected_file_results.append(
+                    projected_fr if projected_fr is not None else file_result
+                )
             else:
                 write_fixed_source(file_result.path, fixed_source)
             fixed_by_file[file_key] = applied
+        elif fix_dry_run:
+            projected_file_results.append(file_result)
 
-    return fixed_by_file, dry_run_diffs
+    projected_result: LintResult | None = None
+    if fix_dry_run:
+        projected_result = LintResult(file_results=projected_file_results)
+        engine._compute_overall_score(projected_result)
+
+    return fixed_by_file, dry_run_diffs, projected_result
 
 
 @click.group()
@@ -309,10 +364,11 @@ def check_command(
     # Apply fixes if requested (free-tier rules only for local fix)
     fixed_by_file: dict[str, list[str]] = {}
     dry_run_diffs: dict[str, str] = {}
+    projected_result: LintResult | None = None
 
     if do_fix or fix_dry_run:
         free_rules = {rid: cls for rid, cls in all_rules.items() if cls.tier == "free"}
-        fixed_by_file, dry_run_diffs = _run_fix_pass(
+        fixed_by_file, dry_run_diffs, projected_result = _run_fix_pass(
             result, engine, free_rules, do_fix, fix_dry_run
         )
 
@@ -330,6 +386,9 @@ def check_command(
 
     # Build display result (free violations only) and count hidden
     display_result = _filter_to_free(result, free_rule_ids)
+    projected_result_full = projected_result  # full (free+pro) for the hint
+    if projected_result is not None:
+        projected_result = _filter_to_free(projected_result, free_rule_ids)
     hidden_count = result.total_violations - display_result.total_violations
 
     # Render output (always show free violations only)
@@ -343,6 +402,7 @@ def check_command(
                 output_path=output_file,
                 fixed_by_file=fixed_by_file if (do_fix or fix_dry_run) else None,
                 dry_run_diffs=dry_run_diffs if fix_dry_run else None,
+                projected_result=projected_result,
             )
         else:
             report_content = reporter.report(display_result, output_path=output_file)
@@ -356,7 +416,7 @@ def check_command(
     # Print hint when there are hidden pro/team violations
     if hidden_count > 0 and output_format == "text":
         tiers = _hidden_tiers(result, free_rule_ids)
-        _print_hint(hidden_count, tiers, config.api_key)
+        _print_hint(hidden_count, tiers, config.api_key, projected_result_full)
 
     # Silent POST of full results if API key configured
     if config.api_key:
