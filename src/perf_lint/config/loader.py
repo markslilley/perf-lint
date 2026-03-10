@@ -72,12 +72,67 @@ def load_config(config_path: Path | None = None) -> PerfLintConfig:
     return config
 
 
+_ECOSYSTEM_FILENAMES = ("perf-ecosystem.yml", "perf-ecosystem.yaml")
+
+
 def _inject_env_vars(config: PerfLintConfig) -> None:
-    """Inject PERF_LINT_API_KEY and PERF_LINT_API_URL from environment if not set."""
+    """Inject PERF_LINT_API_KEY and PERF_LINT_API_URL from environment, then perf-ecosystem.yml."""
     if not config.api_key:
         config.api_key = os.environ.get("PERF_LINT_API_KEY")
     if os.environ.get("PERF_LINT_API_URL"):
         config.api_url = os.environ["PERF_LINT_API_URL"]
+
+    # Fall back to perf-ecosystem.yml if still not fully configured
+    if not config.api_key:
+        _inject_from_ecosystem_config(config)
+
+
+def _inject_from_ecosystem_config(config: PerfLintConfig) -> None:
+    """Read services.perf_lint_api from the nearest perf-ecosystem.yml."""
+    ecosystem_path = _find_ecosystem_config()
+    if ecosystem_path is None:
+        return
+
+    try:
+        raw = yaml.safe_load(ecosystem_path.read_text(encoding="utf-8")) or {}
+    except Exception:
+        return
+
+    perf_lint_svc = (raw.get("services") or {}).get("perf_lint_api") or {}
+    if not config.api_key and perf_lint_svc.get("api_key"):
+        config.api_key = _resolve_env_ref(perf_lint_svc["api_key"])
+    if perf_lint_svc.get("url"):
+        resolved_url = _resolve_env_ref(perf_lint_svc["url"])
+        if resolved_url:
+            config.api_url = resolved_url
+
+
+def _find_ecosystem_config(start_dir: Path | None = None) -> Path | None:
+    """Walk upward from start_dir searching for perf-ecosystem.yml."""
+    current = (start_dir or Path.cwd()).resolve()
+
+    for level, directory in enumerate([current, *current.parents]):
+        if level >= _MAX_WALK_LEVELS:
+            break
+
+        for name in _ECOSYSTEM_FILENAMES:
+            candidate = directory / name
+            if candidate.is_file():
+                return candidate
+
+        if (directory / ".git").is_dir() or (directory / "pyproject.toml").is_file():
+            break
+
+    return None
+
+
+def _resolve_env_ref(value: str) -> str | None:
+    """Resolve ${VAR_NAME} references to environment variable values."""
+    if not isinstance(value, str):
+        return str(value) if value is not None else None
+    if value.startswith("${") and value.endswith("}"):
+        return os.environ.get(value[2:-1])
+    return value
 
 
 def _read_config_file(path: Path) -> dict:

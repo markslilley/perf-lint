@@ -74,8 +74,11 @@ def _load_file_plugins(config: PerfLintConfig) -> list[str]:
 
             # Prevent relative path traversal: reject relative patterns that
             # resolve outside the project root (e.g. "../../evil.py").
-            # Absolute paths are explicit user intent and are not restricted.
-            if not Path(pattern).is_absolute():
+            if Path(pattern).is_absolute():
+                # Absolute paths are explicit user intent but we log a notice
+                # so unusual plugin locations are visible in CI logs.
+                logger.info("Loading plugin from absolute path: '%s'", path)
+            else:
                 try:
                     path.resolve().relative_to(project_root)
                 except ValueError:
