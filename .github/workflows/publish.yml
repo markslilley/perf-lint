@@ -1,0 +1,108 @@
+name: publish
+
+# Publish perf-lint-tool to PyPI via Trusted Publishing (OIDC).
+#
+# No API token is stored anywhere. PyPI is configured to trust exactly this
+# repository + this workflow filename + the "pypi" environment, and mints a
+# short-lived credential at publish time. Changing the filename of this workflow,
+# or the environment name below, BREAKS publishing until the trusted publisher is
+# updated at pypi.org -> perf-lint-tool -> Settings -> Publishing.
+#
+# Trigger: push a version tag.
+#     git tag -a v1.2.0 -m "perf-lint-tool 1.2.0" && git push origin v1.2.0
+#
+# workflow_dispatch is available for re-running a failed publish without moving
+# the tag. It builds from the ref you select.
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Install build tooling
+        run: python3 -m pip install --upgrade build twine
+
+      # A PyPI version can never be reused, so every check that can run before
+      # upload must run before upload.
+      - name: Tag must match the packaged version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG=$(python3 -c "import tomllib;print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          echo "tag=$TAG packaged=$PKG"
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::Tag v$TAG does not match pyproject.toml version $PKG"
+            exit 1
+          fi
+
+      - name: Install and test
+        run: |
+          python3 -m pip install -e ".[dev]"
+          python3 -m pytest
+
+      - name: Build sdist and wheel
+        run: |
+          rm -rf dist
+          python3 -m build
+
+      - name: Verify metadata renders on PyPI
+        run: python3 -m twine check dist/*
+
+      # Catches the failure mode this release actually hit: pyproject.toml bumped
+      # but perf_lint.__version__ left behind, shipping a wheel that misreports
+      # itself in --version, in SARIF uploads, and in the API User-Agent.
+      - name: Installed wheel reports the right version
+        run: |
+          python3 -m venv /tmp/verify
+          /tmp/verify/bin/pip install --quiet dist/*.whl
+          REPORTED=$(/tmp/verify/bin/perf-lint --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          PKG=$(python3 -c "import tomllib;print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          echo "reported=$REPORTED packaged=$PKG"
+          [ "$REPORTED" = "$PKG" ] || { echo "::error::Installed wheel reports $REPORTED, expected $PKG"; exit 1; }
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: pypi
+      url: https://pypi.org/project/perf-lint-tool/
+    permissions:
+      id-token: write # required for Trusted Publishing; do not remove
+    steps:
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with:
+          # Re-running a publish after a partial upload should not fail the job.
+          skip-existing: true
