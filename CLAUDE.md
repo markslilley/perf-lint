@@ -38,11 +38,13 @@ perf-lint statically analyses performance test scripts (JMeter `.jmx`, k6 `.js`/
 
 perf-lint is open core. The public repo ships only free-tier rules. Pro and Team rules live in the private `perf-lint-pro` package.
 
-| Tier | Rules | Repo |
-|------|-------|------|
-| Free | 18 | `markslilley/perf-lint` (this repo, MIT) |
-| Pro | 22 | `markslilley/perf-lint-pro` (private) |
-| Team | 13 | `markslilley/perf-lint-pro` (private) |
+| Tier | Rules | Price | Repo |
+|------|-------|-------|------|
+| Free | 18 | Free (MIT) | `markslilley/perf-lint` (this repo) |
+| Pro | 22 | £9/month | `markslilley/perf-lint-pro` (private) |
+| Team | 13 | £29/month | `markslilley/perf-lint-pro` (private) |
+
+Pro and Team combined = 35 extended rules (53 total). Sold via **LemonSqueezy** at https://martkos-it.co.uk/store/perf-lint. Subscriptions also unlock the perf-lint-api dashboard at https://perflint.martkos-it.co.uk.
 
 Pro/Team rules are loaded at runtime via Python entry_points (`perf_lint.rules` group). The plugin loader in `src/perf_lint/plugins/loader.py` discovers and calls `load()` from any installed package that registers under that group.
 

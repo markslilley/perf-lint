@@ -476,4 +476,4 @@ See [CLAUDE.md](CLAUDE.md) for architecture documentation, conventions, and guid
 
 MIT — see [LICENSE](LICENSE).
 
-The Pro and Team rule sets distributed via [perflint.io](https://perflint.io) are proprietary and not included in this repository.
+The Pro and Team rule sets distributed via [perflint.martkos-it.co.uk](https://perflint.martkos-it.co.uk) are proprietary and not included in this repository.
