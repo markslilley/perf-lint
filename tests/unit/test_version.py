@@ -12,14 +12,18 @@ Scanning, and in every request the dashboard logs.
 
 from __future__ import annotations
 
+import json
 import re
 import tomllib
 from pathlib import Path
 
 import perf_lint
+from perf_lint.engine import LintResult
+from perf_lint.reporters.sarif import SarifReporter
 
-PYPROJECT = Path(__file__).resolve().parents[2] / "pyproject.toml"
-INIT = Path(__file__).resolve().parents[2] / "src" / "perf_lint" / "__init__.py"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+PYPROJECT = REPO_ROOT / "pyproject.toml"
+INIT = REPO_ROOT / "src" / "perf_lint" / "__init__.py"
 
 
 def _pyproject_version() -> str:
@@ -45,20 +49,8 @@ def test_version_is_pep440_release():
     )
 
 
-def test_sarif_reports_the_current_version():
-    """SARIF uploads are consumed by GitHub Code Scanning; a stale version misleads."""
-    from perf_lint.reporters.sarif import SarifReporter  # noqa: PLC0415
-
-    import json
-
-    reporter = SarifReporter()
-    rendered = reporter.render([]) if hasattr(reporter, "render") else None
-    if rendered is None:  # reporter API differs — fall back to the module constant
-        from perf_lint import __version__ as v
-
-        assert v == _pyproject_version()
-        return
-
+def test_sarif_driver_reports_the_current_version():
+    """SARIF uploads feed GitHub Code Scanning; a stale version misleads consumers."""
+    rendered = SarifReporter().report(LintResult())
     doc = json.loads(rendered) if isinstance(rendered, str) else rendered
-    tool_version = doc["runs"][0]["tool"]["driver"]["version"]
-    assert tool_version == perf_lint.__version__
+    assert doc["runs"][0]["tool"]["driver"]["version"] == perf_lint.__version__
