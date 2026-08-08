@@ -23,6 +23,9 @@ This file documents the architecture, conventions, and everything you need to ad
 - [Security model](#security-model)
 - [Key design decisions](#key-design-decisions)
 - [Commands](#commands)
+- [Distribution](#distribution)
+- [**Releasing to PyPI**](#releasing-to-pypi) — Trusted Publishing, no API token; bump **both** version strings
+- [CI](#ci)
 
 ---
 
@@ -560,13 +563,20 @@ ssh vps "cd /var/www/perf-lint-api && docker compose build --no-cache api && doc
 
 ## Distribution
 
-| Channel | Package | Version |
+| Channel | Package | Version (2026-08-08) |
 |---------|---------|---------|
-| PyPI | `perf-lint-tool` | 1.0.1 (1.0.0 yanked — had all 53 rules) |
-| GitHub Action | `markslilley/perf-lint-action` | v1 (Marketplace) |
+| PyPI | `perf-lint-tool` | **1.1.0** (1.0.0 yanked — had all 53 rules) |
+| GitHub Action | `markslilley/perf-lint-action` | **v1.2.0**, `v1` floating (Marketplace) |
 | API service | `perflint.martkos-it.co.uk` | Docker, VPS |
 
 **PyPI note:** The package name is `perf-lint-tool` (not `perf-lint`). Install with `pip install perf-lint-tool`. The CLI command is still `perf-lint`.
+
+**The CLI and the Action are versioned INDEPENDENTLY.** The Action being on v1.2.0 while the
+CLI is on 1.1.0 is not drift and needs no "catch-up" release. The Action just runs
+`pip install perf-lint-tool` and uses only the stable flag surface — `check`, `--config`,
+`--severity`, `--ignore-rule`, `--no-color`, `--format`, `--output`, plus `PERF_LINT_API_KEY`
+from the environment. Before claiming the CLI is "behind", check whether the Action actually
+depends on anything unreleased; on 2026-08-08 it did not.
 
 **GitHub Action:** The `v1` floating tag always points to the latest 1.x release. After pushing fixes to `perf-lint-action`, move the floating tag:
 ```bash
@@ -574,8 +584,69 @@ gh api --method PATCH /repos/markslilley/perf-lint-action/git/refs/tags/v1 \
   -f sha="$(git -C /path/to/perf-lint-action rev-parse HEAD)" -F force=true
 ```
 
+---
+
+## Releasing to PyPI
+
+Publishing is automated via **PyPI Trusted Publishing (OIDC)**. There is no API token —
+not in `~/.pypirc`, not in GitHub secrets, not anywhere. PyPI trusts this exact combination:
+
+| Field | Value |
+|-------|-------|
+| Owner | `markslilley` |
+| Repository | `perf-lint` |
+| Workflow filename | `publish.yml` |
+| GitHub environment | `pypi` |
+
+Configured at pypi.org → `perf-lint-tool` → Settings → Publishing.
+
+> **Renaming `.github/workflows/publish.yml` or the `pypi` environment BREAKS publishing**
+> until the trusted publisher is updated on PyPI. That coupling is the cost of having no
+> token. Do not rename either casually.
+
+### The release procedure
+
+1. **Bump BOTH version strings.** There are two sources of truth and they must match:
+   - `pyproject.toml` → `[project] version`
+   - `src/perf_lint/__init__.py` → `__version__`
+2. Add a `CHANGELOG.md` entry.
+3. `ruff check src/ tests/ && python3 -m pytest` — run the repo's OWN ruff config; CI runs
+   exactly `ruff check src/ tests/`.
+4. Commit, then tag and push:
+   ```bash
+   git tag -a v1.2.0 -m "perf-lint-tool 1.2.0"
+   git push origin main && git push origin v1.2.0
+   ```
+5. `publish.yml` does the rest: verifies the tag matches the packaged version, runs the
+   tests, `twine check`s both artifacts, installs the built wheel into a clean venv and
+   asserts it reports the packaged version, then uploads via OIDC.
+6. `gh release create` for the GitHub release (not automated).
+
+### Why `__version__` matters more than it looks
+
+`perf_lint.__version__` is not cosmetic. It feeds `--version`, **the `tool.driver.version`
+field of every SARIF file uploaded to GitHub Code Scanning**, and the API client's
+User-Agent. During the 1.1.0 release only `pyproject.toml` was bumped, which would have
+published a wheel labelled 1.1.0 that reported itself as 1.0.2 to every consumer.
+
+That drift is now guarded twice — by `tests/unit/test_version.py` and by a step in
+`publish.yml` — but bump both by hand anyway.
+
+### Gotchas learned the hard way (2026-08-08)
+
+- **A PyPI version can never be reused.** Everything checkable runs before upload for that
+  reason. If a publish fails after upload, the next version number is the only way forward.
+- **A tag must be at or after the commit that adds `publish.yml`**, or the workflow will not
+  exist at that ref and publishing simply will not fire.
+- **PyPI's JSON API and the simple index are cached.** After a successful upload,
+  `pip install` can still 404 for a minute or two. Check the workflow log for `200 OK` from
+  `upload.pypi.org` before concluding anything failed.
+
 ## CI
 
 `.github/workflows/ci.yml` runs on push/PR/workflow_dispatch:
-- **Tests job**: ruff check + pytest (265 tests)
+- **Tests job**: ruff check + pytest (270 tests, 90% coverage)
 - **perf-lint-action self-test job**: runs `markslilley/perf-lint-action@v1` against `samples/`, asserts violations > 0 and checks outputs (violations, score, grade)
+
+`.github/workflows/publish.yml` runs on a `v*.*.*` tag push (and `workflow_dispatch` for
+re-running a failed publish without moving the tag). See **Releasing to PyPI** above.
